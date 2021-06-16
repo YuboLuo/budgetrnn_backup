@@ -1,0 +1,16 @@
+conda create -n budget python=3.6 tensorflow=2.2 numpy matplotlib scipy=1.4.1 scikit-learn=0.22
+
+--model-path './../trained_models/pen_digits/skip/model-SKIP_RNN-pen-digits-2020-08-29-02-45-33_model_best.pkl.gz' --sensor-type 'temp' --precision 10 --msp True
+
+
+sensor_client.py
+--sample-freq 5 --seq-length 8 --max-sequences 20 --inputs-path data/pen_digits/folds_8/test_10_inputs.txt --labels-path data/pen_digits/folds_8/test_10_outputs.txt --output-file yubo/output/ --budget 200 --is-skip --start-index 0
+
+create_mcu_dataset.py
+--data-folder data/pen_digits/folds_8/test/data000.jsonl.gz --precision 10
+
+train.py
+--data-folders data/pen_digits/folds_8 --params-files params/pen_digits/skip/skip_1.json --save-folder saved_models --should-print --testrun
+
+budget virtual env
+conda create -n budget python=3.6 tensorflow=2.2 numpy matplotlib scipy=1.4.1 scikit-learn=0.22 pexpect
