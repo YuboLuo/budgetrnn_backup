@@ -24,6 +24,7 @@ def train(data_folder: str, save_folder: str, hypers: HyperParameters, should_pr
     # Train the model
     train_label = model.train(dataset=dataset, should_print=should_print)
 
+
     # Close the dataset files
     dataset.close()
 
