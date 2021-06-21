@@ -79,6 +79,84 @@ class TFModel(Model):
     def output_type(self) -> OutputType:
         return self._output_type
 
+    def Yubo_save_dataset_helper(self, data: DataSeries, dataset: Dataset):
+        """
+        helper function for Yubo_save_dataset
+        Since we need to save TRAIN, VALID, TEST
+        """
+
+        input_samples: List[List[float]] = []
+        output_samples: List[List[float]] = []
+
+        # Fetch training samples to prepare for normalization
+        unique_labels: Set[Any] = set()
+        for sample in dataset.iterate_series(series=data):
+            input_sample = np.array(sample[INPUTS])
+            input_samples.append(input_sample)
+
+            if not isinstance(sample[OUTPUT], list) and \
+                    not isinstance(sample[OUTPUT], np.ndarray):
+                output_samples.append([sample[OUTPUT]])
+            elif isinstance(sample[OUTPUT], np.ndarray) and len(sample[OUTPUT].shape) == 0:
+                output_samples.append([sample[OUTPUT]])
+            else:
+                output_samples.append(sample[OUTPUT])
+
+            if self.output_type == OutputType.MULTI_CLASSIFICATION:
+                unique_labels.add(sample[OUTPUT])
+
+        # Infer the number of input and output features
+        first_sample = np.array(input_samples[0])
+        input_shape = first_sample.shape[1:]  # Skip the sequence length
+        seq_length = len(input_samples[0]) if self.hypers.seq_length is None else self.hypers.seq_length
+
+        # Normalize the inputs
+        assert len(input_shape) == 1
+        input_samples = np.vstack(input_samples)
+        input_scaler = StandardScaler()
+
+        input_scaler.fit(input_samples) # fit the scaler
+
+        # convert list to array
+        input_ndarray = np.array(input_samples)
+        output_ndarray = np.array(output_samples)
+
+        # for input samples, normalize it
+        input_ndarray = input_scaler.transform(input_ndarray)
+        input_ndarray = input_ndarray.reshape((int(input_ndarray.shape[0]/8),8*input_ndarray.shape[1]))
+
+        # we want to test mlp, we do not need sequence of data
+        # make one individual datapoint into one row
+
+
+
+        return input_ndarray, output_ndarray
+
+
+    def Yubo_save_dataset(self, dataset: Dataset):
+        """
+        I want to create my own tensorflow version for training models using keras
+        but for now I need to use his project to generate dataset: train, validate, test
+        developed based on load_metadata()
+        """
+
+        data : Dict[Any, Any] = dict()
+
+        # TRAIN_input, TRAIN_output = self.Yubo_save_dataset_helper(DataSeries.TRAIN, dataset)
+        # VALID_input, VALID_output = self.Yubo_save_dataset_helper(DataSeries.VALID, dataset)
+        # TEST_input, TEST_output = self.Yubo_save_dataset_helper(DataSeries.TEST, dataset)
+
+        data['TRAIN'] = self.Yubo_save_dataset_helper(DataSeries.TRAIN, dataset)
+        data['VALID'] = self.Yubo_save_dataset_helper(DataSeries.VALID, dataset)
+        data['TEST'] = self.Yubo_save_dataset_helper(DataSeries.TEST, dataset)
+
+        np.save('data.npy', data)
+
+
+
+
+
+
     def load_metadata(self, dataset: Dataset):
         """
         Loads metadata from the dataset. Results are stored
@@ -336,6 +414,8 @@ class TFModel(Model):
             The name of the training run. Training results are logged to a pickle file with the name
             model-train-log_{name}.pkl.gz.
         """
+        self.Yubo_save_dataset(dataset) # added by Yubo
+
         self.load_metadata(dataset)
 
         current_time = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
