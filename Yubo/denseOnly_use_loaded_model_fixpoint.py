@@ -24,12 +24,15 @@ valid_images = d['VALID'][0]
 valid_labels = d['VALID'][1]
 
 def LeakyReLU(x: np.ndarray):
-
+    '''
+    this function works for both float or fxp-fixed-point
+    '''
     return np.where(x > 0, x, x*0.01)
 
 def fxp_matrix_multiple(mat1: Fxp, mat2: Fxp) -> Fxp:
     """
-    for fixed-point matrix mulplication
+    doing fixed-point matrix mulplication
+    for manually verifying fixed-point inference on python
     """
     m = mat1.shape[0]
     n = mat2.shape[1]
@@ -69,6 +72,7 @@ def predict_fxp(index: int, images ):
     """
     fixed-point version
     make a prediction on one image instance
+    manually execute the inference steps
     """
     input = Fxp(images[index], signed = True, n_word = 16, n_frac = 10)
     for i in range(int(len(Weights)/2)):
@@ -83,7 +87,10 @@ def predict_fxp(index: int, images ):
     return np.argmax(input)
 
 def test_fxp(index: int, images, labels ):
-
+    '''
+    Fix-point version
+    test if one sample can be correctly predicted by the model
+    '''
     label_pred = predict_fxp(index, images)
 
     if label_pred != labels[index]:
@@ -95,6 +102,7 @@ def float_to_fixed_point(x: float, precision: int) -> int:
     """
     Converts the given floating point value to fixed point representation
     with the given number of fractional bits.
+    Copied from original BudgetRNN project
     """
     multiplier = 1 << precision
 
@@ -117,6 +125,7 @@ def tensor_to_fixed_point(tensor: Union[List[float], np.ndarray], precision: int
     """
     Converts each element in the given tensor to fixed point representation with the given
     number of fractional bits.
+    Copied from original BudgetRNN project
     """
     fixed_point_converter = partial(float_to_fixed_point, precision=precision)
 
@@ -130,6 +139,7 @@ def tensor_to_fixed_point(tensor: Union[List[float], np.ndarray], precision: int
 def array_to_string(array: Union[List[Any], np.ndarray]) -> str:
     """
     Formats the 1d array as a comma-separated string enclosed in braces.
+    Copied from original BudgetRNN project
     """
     # Validate shapes
     if isinstance(array, np.ndarray):
@@ -141,6 +151,7 @@ def array_to_string(array: Union[List[Any], np.ndarray]) -> str:
 def create_matrix(mat: np.ndarray) -> str:
     """
     Converts weight matrix into string
+    Copied from original BudgetRNN project
     """
     assert len(mat.shape) == 1 or len(mat.shape) == 2, 'Can only create matrices of at most 2 dimensions'
     assert mat.shape[0] % 2 == 0 or mat.shape[0] == 1, 'The number of rows must be even or larger than 1. Got: {0}'.format(mat.shape)
@@ -152,6 +163,19 @@ def create_matrix(mat: np.ndarray) -> str:
     matrix_string = array_to_string(mat.reshape(-1))
 
     return matrix_string
+
+def get_test_sample_msp(idx: int):
+    '''
+    get one sample input for inference on msp430
+    msp requires us to append 0 after each number
+    '''
+    fxp = partial(Fxp, signed = True, n_word = 16, n_frac = 10)
+    temp = fxp(valid_images[idx]).val
+    temp = np.expand_dims(temp, axis=1)
+    temp = (np.concatenate((temp, np.zeros_like(temp)), axis=1)).flatten()
+
+    return temp, valid_labels[idx]
+
 
 # load model
 model = models.load_model('checkpoint2')
@@ -172,20 +196,10 @@ for w in Weights:
     # break
     print(matrix_string)
 
-def get_test_sample_msp(idx: int):
 
-
-    temp = fxp(valid_images[idx]).val
-    temp = np.expand_dims(temp, axis=1)
-    temp = (np.concatenate((temp, np.zeros_like(temp)), axis=1)).flatten()
-
-    return temp, valid_labels[idx]
 
 fxp = partial(Fxp, signed = True, n_word = 16, n_frac = 10)
 x = fxp(w)
-
-
-
 
 input = fxp(valid_images[0])
 w1 = fxp(Weights[0])
@@ -195,4 +209,6 @@ b2 = fxp(Weights[3])
 
 output1 = fxp_matrix_multiple(input,w1)
 predict_fxp(0,valid_images)
+
+
 
