@@ -41,6 +41,9 @@ print(x_train.shape)
 
 model = models.load_model('cnn_checkpoint3')  # cnn_checkpoint3, cnn_dropoutDebug
 weights = model.get_weights()
+
+### we can use Model to extract the output of each layer and build a new model for each layer
+### model.predict() only accepts a batch of inputs, not accepting one single input instance
 model_layer0 = Model(inputs = model.input, outputs = model.layers[0].output)
 model_layer1 = Model(inputs = model.input, outputs = model.layers[1].output)
 model_layer2 = Model(inputs = model.input, outputs = model.layers[2].output)
